@@ -1,4 +1,5 @@
 require 'gosu'
+require 'pry'
 
 # Module that contains all display methods
 module Displayable
@@ -132,6 +133,7 @@ end
 
 class WhackARuby < Gosu::Window
   include Displayable
+  include Setable
 
   RUBY_HIT_RADIUS = 75
   RUBY_VISIBILITY = 75
@@ -145,6 +147,7 @@ class WhackARuby < Gosu::Window
   end
 
   def draw
+    display_tokens
     display_color
     reset_hit_count
     display_header
@@ -227,12 +230,12 @@ class WhackARuby < Gosu::Window
   end
 
   def reveal_ruby_and_emerald
-    @visible_rb = RUBY_VISIBILITY if invisible?(@visibile_rb) && rand < 0.01
+    @visible_rb = RUBY_VISIBILITY if invisible?(@visible_rb) && rand < 0.01
     @visible_em = EMERALD_VISIBILITY if invisible?(@visible_em) && rand < 0.02
   end
 
   def invisible?(gem_visibility)
-    gem_visibility < VISIBILITY_MIN
+    gem_visibility < Setable::VISIBILITY_MIN
   end
 
   def bounce_off_edge_of_screen
