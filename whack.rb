@@ -1,6 +1,15 @@
 require 'gosu'
 
+# Module that contains all display methods
 module Displayable
+  GAME_TIME = 60
+  SCREEN_HEIGHT = 600
+  SCREEN_WIDTH = 800
+  MILLISECONDS = 1000
+  SCORE_INCREMENT = 5
+
+  private
+
   def display_tokens
     display_ruby
     display_emerald
@@ -8,15 +17,15 @@ module Displayable
   end
 
   def display_ruby
-    if @visible_rb > 0
-      @ruby.draw(@x_rb - @width_rb / 2, @y_rb - @height_rb / 2, 1)
-    end
+    center_width = @x_rb - @width_rb / 2
+    center_height = @y_rb - @height_rb / 2
+    @ruby.draw(center_width, center_height, 1) if @visible_rb > 0
   end
 
   def display_emerald
-    if @visible_em > 0
-      @emerald.draw(@x_em - @width_em / 2, @y_em - @height_em / 2, 1)
-    end
+    center_width = @x_em - @width_em / 2
+    center_height = @y_em - @height_em / 2
+    @emerald.draw(center_width, center_height, 1) if @visible_em > 0
   end
 
   def display_hammer
@@ -31,74 +40,27 @@ module Displayable
 
   def display_game_over
     @visible_rb = 20
-    @font.draw("GAME OVER", 300, 300, 2)
+    @font.draw('GAME OVER', 300, 300, 2)
     @font.draw('Press the Space Bar to Play Again', 175, 350, 3)
   end
 
   def display_color
     color = determine_color(@hit_rb, @hit_em)
-    draw_quad(0, 0, color, 800, 0, color, 800, 600, color, 0, 600, color)
+    draw_quad(0, 0, color,
+              SCREEN_WIDTH, 0, color,
+              SCREEN_WIDTH, SCREEN_HEIGHT, color,
+              0, SCREEN_HEIGHT, color)
   end
-
 end
 
-# WhackARuby class is subclass of the Gosu::Window class
-# This will allow to use methods to create a game window.
-class WhackARuby < Gosu::Window
-  include Displayable
-
-  def initialize
-    # Telling Gosu::Window to make a window 800px by 600px;
-    super(800, 600)
-    self.caption = 'Whack the Ruby!'
-    set_initial_values
-  end
-
-  def draw
-    # invoking the draw instance method of the Gosu::Image class.
-    # Telling Gosu::Image to draw the image from its center point
-    # and not from the top left corner
-    display_tokens
-    display_color
-    reset_hit_count
-    display_header
-
-    unless @playing
-      display_game_over
-    end
-  end
-
-  # the Gosu::Window update method is essentially another word for "animate"
-  # It updates the frame and the positions of the objects so they appear to move
-  def update
-    if @playing
-      # Move the position of ruby and emerald and make them blink
-      move_ruby_and_emerald
-      decrement_visibility
-
-      # Reverse velocity when ruby gets to edge of window
-      bounce_off_edge_of_screen
-
-      # Make ruby and emerald blink
-      reveal_ruby_and_emerald
-
-      @time = 60 - ((Gosu.milliseconds - @start_time) / 1000)
-      @playing = false unless @time > 0
-    end
-  end
-
-  # Creating mouse click event
-  def button_down(id)
-    if @playing
-      if (id == Gosu::MsLeft)
-        update_score
-      end
-    else
-      if (id == Gosu::KbSpace)
-        new_game_reset
-      end
-    end
-  end
+module Setable
+  START_POSITION_RB = 200
+  START_POSITION_X_EM = 600
+  START_POSITION_Y_EM = 400
+  VISIBILITY_MIN = -10
+  GEM_WIDTH = 50
+  RB_HEIGHT = 42
+  EM_HEIGHT = 30
 
   private
 
@@ -107,14 +69,128 @@ class WhackARuby < Gosu::Window
     @hit_em = 0
   end
 
-  def determine_color(ruby, emerald)
-    if ruby == 0 && emerald == 0
+  def new_game_reset
+    set_starting_values
+    set_visibility
+    @start_time = Gosu.milliseconds
+  end
+
+  def show_images
+    @ruby = Gosu::Image.new('images/ruby.png')
+    @emerald = Gosu::Image.new('images/emerald.png')
+    @hammer = Gosu::Image.new('images/hammer.png')
+  end
+
+  def set_position_width_height
+    @x_rb = START_POSITION_RB
+    @y_rb = START_POSITION_RB
+
+    @x_em = START_POSITION_X_EM
+    @y_em = START_POSITION_Y_EM
+
+    @width_rb = GEM_WIDTH
+    @height_rb = RB_HEIGHT
+
+    @width_em = GEM_WIDTH
+    @height_em = EM_HEIGHT
+  end
+
+  def set_velocity
+    @velocity_x_rb = 5
+    @velocity_y_rb = 5
+
+    @velocity_x_em = 3
+    @velocity_y_em = 3
+  end
+
+  def set_visibility
+    @visible_rb = VISIBILITY_MIN
+    @visible_em = VISIBILITY_MIN
+  end
+
+  def set_fonts
+    @font = Gosu::Font.new(30)
+    @font_smaller = Gosu::Font.new(15)
+  end
+
+  def set_starting_values
+    @score = 0
+    @playing = true
+  end
+
+  def set_initial_values
+    show_images
+    set_position_width_height
+    set_velocity
+    set_visibility
+    reset_hit_count
+    set_fonts
+    set_starting_values
+    @start_time = 0
+  end
+end
+
+class WhackARuby < Gosu::Window
+  include Displayable
+
+  RUBY_HIT_RADIUS = 75
+  RUBY_VISIBILITY = 75
+  EMERALD_HIT_RADIUS = 100
+  EMERALD_VISIBILITY = 100
+
+  def initialize
+    super(SCREEN_WIDTH, SCREEN_HEIGHT)
+    self.caption = 'Whack the Ruby!'
+    set_initial_values
+  end
+
+  def draw
+    display_color
+    reset_hit_count
+    display_header
+    display_game_over unless @playing
+  end
+
+  def update
+    game_loop if @playing
+  end
+
+  def button_down(id)
+    if @playing
+      update_score if left_mouse_button?(id)
+    elsif space_bar?(id)
+      new_game_reset
+    end
+  end
+
+  private
+
+  def game_loop
+    move_ruby_and_emerald
+    decrement_visibility
+    bounce_off_edge_of_screen
+    reveal_ruby_and_emerald
+
+    @time = GAME_TIME - ((Gosu.milliseconds - @start_time) / MILLISECONDS)
+    @playing = false unless @time > 0
+  end
+
+  def space_bar?(id)
+    id == Gosu::MsLeft
+  end
+
+  def left_mouse_button?(id)
+    id == Gosu::MsLeft
+  end
+
+  def determine_color(ruby_hit_score, emerald_hit_score)
+    if ruby_hit_score.zero? && emerald_hit_score.zero?
       Gosu::Color::NONE
-    elsif ruby == 1
+    elsif ruby_hit_score == 1
       Gosu::Color::GREEN
-    elsif emerald == 1
+    elsif emerald_hit_score == 1
       Gosu::Color.argb(0xff_ad42f4)
-    elsif ruby == -1
+    elsif ruby_hit_score == -1
       Gosu::Color::RED
     end
   end
@@ -122,10 +198,10 @@ class WhackARuby < Gosu::Window
   def update_score
     if hit_ruby?(@x_rb, @y_rb, @visible_rb)
       @hit_rb = 1
-      @score += 5
+      @score += SCORE_INCREMENT
     elsif hit_emerald?(@x_em, @y_em, @visible_em)
       @hit_em = 1
-      @score -= 5
+      @score -= SCORE_INCREMENT
     else
       @hit_rb = -1
       @score -= 1
@@ -133,24 +209,30 @@ class WhackARuby < Gosu::Window
   end
 
   def hit_ruby?(x_pos, y_pos, visibility)
-    Gosu.distance(mouse_x, mouse_y, x_pos, y_pos) < 75 && visibility > 0
+    Gosu.distance(mouse_x, mouse_y, x_pos, y_pos) < RUBY_HIT_RADIUS &&
+    visibility > 0
   end
 
   def hit_emerald?(x_pos, y_pos, visibility)
-    Gosu.distance(mouse_x, mouse_y, x_pos, y_pos) < 100 && visibility > 0
+    Gosu.distance(mouse_x, mouse_y, x_pos, y_pos) < EMERALD_HIT_RADIUS &&
+    visibility > 0
   end
 
   def edge_of_screen_width?(position, width)
-    position + width / 2 > 800  || position - width / 2 < 0
+    position + width / 2 > SCREEN_WIDTH || position - width / 2 < 0
   end
 
   def edge_of_screen_height?(position, height)
-    position + height / 2 > 600 || position - height / 2 < 0
+    position + height / 2 > SCREEN_HEIGHT || position - height / 2 < 0
   end
 
   def reveal_ruby_and_emerald
-    @visible_rb = 75 if @visible_rb < -10 and rand < 0.01
-    @visible_em = 100 if @visible_em < -10 and rand < 0.02
+    @visible_rb = RUBY_VISIBILITY if invisible?(@visibile_rb) && rand < 0.01
+    @visible_em = EMERALD_VISIBILITY if invisible?(@visible_em) && rand < 0.02
+  end
+
+  def invisible?(gem_visibility)
+    gem_visibility < VISIBILITY_MIN
   end
 
   def bounce_off_edge_of_screen
@@ -170,52 +252,6 @@ class WhackARuby < Gosu::Window
   def decrement_visibility
     @visible_em -= 1
     @visible_rb -= 1
-  end
-
-  def new_game_reset
-    @playing = true
-    @visible_rb = -10
-    @start_time = Gosu.milliseconds
-    @score = 0
-  end
-
-  def set_initial_values
-    # Creating an instance of class Gosu::Image so that I can draw a picture.
-    @ruby = Gosu::Image.new('images/ruby.png')
-    @emerald = Gosu::Image.new('images/emerald.png')
-    @hammer = Gosu::Image.new('images/hammer.png')
-
-    # Tellling Gosu::Window to initialize the ruby image at
-    # 200px from the top and left
-    @x_rb = 200
-    @y_rb = 200
-
-    @x_em = 600
-    @y_em = 400
-
-    @width_rb = 50
-    @height_rb = 42
-
-    @width_em = 50
-    @height_em = 30
-
-    # Setting the velocity of x and y so the image will move
-    @velocity_x_rb = 5
-    @velocity_y_rb = 5
-
-    @velocity_x_em = 3
-    @velocity_y_em = 3
-
-    @visible_rb = 10
-    @visible_em = 10
-
-    reset_hit_count
-
-    @font = Gosu::Font.new(30)
-    @font_smaller = Gosu::Font.new(15)
-    @score = 0
-    @playing = true
-    @start_time = 0
   end
 end
 
