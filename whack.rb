@@ -63,10 +63,10 @@ class WhackARuby < Gosu::Window
   end
 
   def update_score
-    if hit?(@ruby)
+    if @rubys.any? { |ruby| hit?(ruby) }
       @ruby.was_hit
       @score += SCORE_INCREMENT
-    elsif hit?(@emerald)
+    elsif @emeralds.any? { |emerald| hit?(emerald) }
       @emerald.was_hit
       @score -= SCORE_INCREMENT
     else
@@ -91,25 +91,24 @@ class WhackARuby < Gosu::Window
   end
 
   def reveal_ruby_and_emerald
-    @ruby.reveal if @ruby.invisible? && rand < 0.01
-    @emerald.reveal if @emerald.invisible? && rand < 0.02
+    @gems.each do |rock|
+      rock.reveal if rock.invisible? && rand < 0.02
+    end
   end
 
   def bounce_off_edge_of_screen
-    @ruby.reverse_x if edge_of_screen_width?(@ruby)
-    @ruby.reverse_y if edge_of_screen_height?(@ruby)
-    @emerald.reverse_x if edge_of_screen_width?(@emerald)
-    @emerald.reverse_y if edge_of_screen_height?(@emerald)
+    @gems.each do |rock|
+      rock.reverse_x if edge_of_screen_width?(rock)
+      rock.reverse_y if edge_of_screen_height?(rock)
+    end
   end
 
   def move_ruby_and_emerald
-    @ruby.move
-    @emerald.move
+    @gems.each { |rock| rock.move }
   end
 
   def decrement_visibility
-    @ruby.decrement_visibility
-    @emerald.decrement_visibility
+    @gems.each { |rock| rock.decrement_visibility }
   end
 end
 

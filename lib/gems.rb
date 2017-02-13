@@ -71,7 +71,8 @@ class Ruby < Gems
   VISIBILITY = 75
 
   def initialize(x, y)
-    super(x, y, 50, 42, 5, 'images/ruby.png', HIT_RADIUS)
+    random_velocity = rand(5) + 4
+    super(x, y, 50, 42, random_velocity, 'images/ruby.png', HIT_RADIUS)
   end
 
   def reveal
@@ -84,7 +85,8 @@ class Emerald < Gems
   VISIBILITY = 100
 
   def initialize(x, y)
-    super(x, y, 50, 30, 3, 'images/emerald.png', HIT_RADIUS)
+    random_velocity = rand(5) + 4
+    super(x, y, 50, 30, random_velocity, 'images/emerald.png', HIT_RADIUS)
   end
 
   def reveal

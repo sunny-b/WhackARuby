@@ -3,8 +3,7 @@ module Setable
   private
 
   def set_hit_count
-    @ruby.reset_hit_score
-    @emerald.reset_hit_score
+    @gems.each { |rock| rock.reset_hit_score }
   end
 
   def new_game_reset
@@ -23,9 +22,27 @@ module Setable
     @playing = true
   end
 
-  def set_tokens
-    @ruby = Ruby.new(200, 200)
+  def set_rubys
+    @ruby = Ruby.new(200, 100)
+    @ruby2 = Ruby.new(400, 500)
+    @ruby3 = Ruby.new(300, 200)
+
+    [@ruby, @ruby2, @ruby3]
+  end
+
+  def set_emeralds
     @emerald = Emerald.new(600, 400)
+    @emerald2 = Emerald.new(200, 400)
+    @emerald3 = Emerald.new(500, 100)
+
+    [@emerald, @emerald2, @emerald3]
+  end
+
+  def set_tokens
+    @rubys = set_rubys
+    @emeralds = set_emeralds
+
+    @gems = [@rubys, @emeralds].flatten
     @hammer = Gosu::Image.new('images/hammer.png')
   end
 
